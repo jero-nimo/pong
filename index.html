@@ -1,0 +1,242 @@
+<!-- Pong game 03/06/2017 
+Curso en Udemi.com
+Jeronimo Fernandez-->
+<!DOCTYPE HTML>
+<html>
+	<body>
+	    <h1>Welcome to my pong game.</h1>
+		<p>This game is up to 7</p>
+		<canvas id="gameCanvas" width="500" height="300"></canvas>
+		<script>
+			//Definicion de variables
+			//Variables del canvas
+			var canvas;
+			var canvasContext;
+			//Variables del gameplay
+			//Pelota
+			var ballX;
+			var ballY;
+			var ballRadius = 5;
+			var speedX = 5;
+			var speedY = 2.5;
+			//Raqueta
+			const PADDLE_WIDTH = 10;
+			const PADDLE_HEIGHT = 60;
+			//Jugador
+			var paddleX = 1;
+			var paddleY = 250;
+			var score = 0;
+			//Enemigo
+			var paddle2X;
+			var paddle2Y = 250;
+			var speedPaddle2 = 3;
+			var score2 = 0;
+			//Para ganar
+			const WINING_SCORE = 7;
+			var showingWinScreen = false;
+			var ganador;
+
+			//Para calcular la posicion del mouse
+			function CalculateMousePos(evt)
+			{
+				var rect = canvas.getBoundingClientRect();
+				var root = document.documentElement;
+				var mouseX = evt.clientX - rect.left - root.scrollLeft;
+				var mouseY = evt.clientY - rect.top - root.scrollTop;
+				return{x:mouseX, y:mouseY};
+			}
+
+			//Cuando doy click
+			function HandleMouseClick(evt)
+			{
+				if (showingWinScreen)
+				{
+					score = 0;
+					score2 = 0;
+					showingWinScreen = false; 
+				}
+			}
+
+			//Funcion que correra cuando la pagina cargo
+			window.onload = function()
+			{
+			    speedPaddle2 = Number(prompt("Select the speed of the opponent (between 1 and 10)", "3"));
+			    if (speedPaddle2 == null)
+			    {
+			        speedPaddle2 = 3;
+			    }
+				console.log("Pagina cargada");
+				//Defino el canvas usando el id colocado al pricipio
+				canvas = document.getElementById('gameCanvas');
+				//Extraigo el contexto
+				canvasContext = canvas.getContext('2d');
+				//Defino la posicion de la pelota en funcion del tamaño del canvas
+				ballX = (canvas.width/2);
+				ballY = (canvas.height/2);
+				//Defino la posicion de la raqueta enemiga porque depende del canvas
+				paddle2X = canvas.width - PADDLE_WIDTH - 1;
+				//Actualizo con un intervalo de tiempo
+				var framesPerSecond = 60;
+				setInterval(function()
+				{
+					//Dibujo
+					DrawEverything();
+					//Muevo
+					MoveEverything();
+				}, 1000/framesPerSecond);
+
+				//Para cuando mueve el mouse
+				canvas.addEventListener('mousemove', function(evt)
+				{	
+					var mousePos = CalculateMousePos(evt);
+					paddleY = mousePos.y - (PADDLE_HEIGHT/2);
+				});
+				//Para cuando hace click
+				canvas.addEventListener('mousedown', HandleMouseClick)
+			}
+
+			//Funcion para dibujar
+			function DrawEverything()
+			{
+				//Coloco el color y el tamaño del campo
+				ColorRect(0,0, canvas.width, canvas.height,'green');
+				//Coloco la raqueta del jugador
+				ColorRect(paddleX, paddleY, PADDLE_WIDTH, PADDLE_HEIGHT,'white');
+				//Coloco la raqueta del contrincante
+				ColorRect(paddle2X, paddle2Y, PADDLE_WIDTH, PADDLE_HEIGHT,'red');
+				//Scores
+				canvasContext.fillStyle = 'white';
+				//Para el jugador
+				canvasContext.fillText(score, canvas.width*0.25, canvas.height*0.1);
+				//Para el enemigo
+				canvasContext.fillText(score2, canvas.width*0.75, canvas.height*0.1);
+				//Si alguien gano
+				if (showingWinScreen)
+				{
+					//Digo el ganador y les doy la opcion de continuar
+					canvasContext.fillText('click to continue', (canvas.width/2)-50, canvas.height*0.75);
+					canvasContext.fillText('Congratulations ' + ganador + ' you won!', (canvas.width/2)-75, canvas.height/2);
+					return;
+				}
+				
+				//Coloco la pelota
+				ColorCircle(ballX, ballY, ballRadius, 'yellow');
+
+				//Red central
+				DrawNet();
+			}
+
+			function DrawNet()
+			{
+				for(var i=0; i<canvas.height; i+=40)
+				{
+					ColorRect((canvas.width/2 - 1), i, 2, 20, 'white');
+				}
+			}
+
+			//Funcion para mover
+			function MoveEverything()
+			{
+				if (showingWinScreen)
+				{
+					return;
+				}
+				//Muevo al enemigo
+				ComputerMovement();
+
+				//Muevo la pelota
+				ballX += speedX;
+				ballY += speedY;
+				//Reviso si choca con los limites
+				//Limites laterales
+				//Pared de la derecha (lado del contrincante)
+				if ((ballX > (canvas.width - ballRadius - PADDLE_WIDTH - 1)))
+				{
+					if ((paddle2Y < ballY) && (paddle2Y + PADDLE_HEIGHT > ballY))
+					{
+						speedX *= -1;
+
+						var deltaY = ballY - (paddle2Y + (PADDLE_HEIGHT/2));
+						speedY = deltaY * 0.2;
+					}
+					else
+					{
+						score++;
+						BallReset();
+					}
+				}
+				//Pared de la isquierda (lado del jugador)
+				if (ballX < PADDLE_WIDTH + 1)
+				{
+					if ((paddleY < ballY) && (paddleY + PADDLE_HEIGHT > ballY))
+					{
+						speedX *= -1;
+
+						var deltaY = ballY - (paddleY + (PADDLE_HEIGHT/2));
+						speedY = deltaY * 0.2;
+					}
+					else
+					{
+						score2++;
+						BallReset();
+					}
+				}
+				//Reviso los limetes superiores e inferiores
+				if ((ballY < ballRadius) || (ballY > (canvas.height - ballRadius)))
+				{
+					speedY *= -1;
+				}
+			}
+
+			//Para resetear la pelota al centro
+			function BallReset()
+			{
+				//Veo si alguien gano
+				if (score == WINING_SCORE)
+				{
+					ganador = 'White'
+					showingWinScreen = true;
+				}
+				else if (score2 == WINING_SCORE)
+				{
+					ganador = 'Red'
+					showingWinScreen = true;
+				}
+				//Reseteo la posicion de la pelota al centro
+				ballX = canvas.width/2;
+				bally = canvas.height/2;
+				speedX *= -1;
+			}
+
+			//Para la inteligencia artificial del contrincante
+			function ComputerMovement()
+			{
+				var paddle2YCenter = paddle2Y + (PADDLE_HEIGHT/2);
+				if (paddle2YCenter < ballY - (PADDLE_HEIGHT*0.2))
+				{
+					paddle2Y += speedPaddle2;
+				}
+				else if (paddle2YCenter > ballY + (PADDLE_HEIGHT*0.2))
+				{
+					paddle2Y -= speedPaddle2;
+				}
+			}
+
+			//Funcion que dibuja los rectangulos
+			function ColorRect(leftX, topY, width, height, drawColor)
+			{
+				canvasContext.fillStyle = drawColor;
+				canvasContext.fillRect(leftX, topY, width,height);
+			}
+
+			//Funcion para dibujar un circulo
+			function ColorCircle(centerX, centerY, radius, color)
+			{
+				canvasContext.fillStyle = color;
+				canvasContext.beginPath();
+				canvasContext.arc(centerX, centerY, radius, 0, Math.PI*2,true);
+				canvasContext.fill();
+			}
+		</script>
+	</body>
+</html>
